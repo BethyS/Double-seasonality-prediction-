@@ -1,0 +1,127 @@
+## ## Bethelhem S.: SARIMA code to capture Double Seasonality
+## ## (Version 1.0.0, built: 2021-10-13)
+## ## Copyright (C)2021 free to use
+## ## Refer to the following sites for further explanations 
+
+# https://otexts.com/fpp2/complexseasonality.html
+
+#.rs.restartR()
+#rm(list = ls())
+#graphics.off()
+setwd("F:/Double-seasonality-prediction--main/")# settin the current dirc.
+
+## Loading required packages-----------------------------------------------------
+
+packages <-
+  c("tidyverse","plotly", # for data processing and manipulations 
+    "xts", # for handling timeseries datasets
+    "Hmisc", # for evaluating correlation 
+    "caret", # for data splitting
+    "tseries", #KPSS test
+    "forecast", "smooth"# for predicting model 
+    )
+lapply(packages, require, character.only = TRUE)
+cat("\014")
+
+# Import datasets--------------------------------------------------------
+dat <- read_csv("RawData.csv")
+clusters <- read_csv("Clusters.csv")
+cluster_means <- read_csv("Clusters_mean.csv")
+head(dat)
+##--------------------------------------------
+
+colnames(dat)[colSums(is.na(dat)) > 0] #identify col with NA values
+dat_modified <- dat %>% select(-c(colnames(dat)[colSums(is.na(dat)) > 0]))# just for simplicity remove the col with missing data
+
+#BoxCox.lambda(dat_modified[,2]) # checking if it needs transf.
+
+# Visualize it as time series
+d.time <- as.POSIXct("2019-01-09",tz ="GMT") + seq(0,9676799,3600)
+max_ps_trafxts = xts(dat_modified[,-1], order.by = d.time)
+cluster_means_xts = xts(cluster_means[,-1], order.by = d.time)
+
+ggplotly(max_ps_trafxts[1:1680,] %>% 
+  ggplot() + 
+  geom_line(aes(Index,`111001`,label ="BTS `111001`" ),color="steelblue")+
+  geom_line(aes(Index,`111006`,label ="BTS `111006`" ),color="red")+
+  geom_line(aes(Index,`111021`,label ="BTS `111021`" ),color="green")+
+  theme_bw() + 
+  labs( x = "Time", y = "Traffic_load` (GB)"))# standard plot
+
+
+##---------------- Data Pre-Processing ------------------------------
+
+# 1. Correlation among the different BTS loads
+
+cor(dat_modified[,-1], method = "pearson", use = "complete.obs")
+res2 <- rcorr(as.matrix(dat_modified[,-1]))
+
+#visualize
+
+col<- colorRampPalette(c("blue", "white", "red"))(16)
+heatmap(x = res2$r, col = col, symm = TRUE)
+
+#2. displaying the ACF and PACF of the  TS
+nor <-function(x) { (x -min(x))/(max(x)-min(x)) }
+    
+max_ps_trafxts_nor <- apply(max_ps_trafxts,2,nor)
+cluster_means_xts_nor <- apply(cluster_means_xts,2,nor)
+ggtsdisplay(max_ps_trafxts_nor[,1],lag.max=170)
+Box.test(dat_modified$`111001`, lag=170, type="Ljung-Box") # test nonstationary
+
+dat.sdiff <- diff(max_ps_trafxts_nor[,1], lag = 24, differences = 1)
+ggplotly(ggtsdisplay(dat.sdiff,lag.max=170))# Requires regular differencing, have other seasonalities as well
+
+#dat.ssdiff <- diff(dat.sdiff, lag = 168, differences = 1)
+#ggtsdisplay(dat.ssdiff,lag.max=170)# Requires regular differencing
+
+dat.rdiff <- diff(max_ps_trafxts_nor[,1], lag = 1, differences = 1)
+ggtsdisplay(dat.rdiff,lag=200) # Requires seasonal differencing
+
+dat.srdiff <- diff(dat.sdiff, lag = 1, differences = 1)
+ggtsdisplay(dat.srdiff,lag=200) # Requires seasonal differencing
+
+#train data spliting 
+timeSlices <- createTimeSlices(1:nrow(dat_modified), 
+                               initialWindow = 2352, horizon = 336, fixedWindow = TRUE)
+str(timeSlices,max.level = 1)
+trainSlices <- timeSlices[[1]]
+testSlices <- timeSlices[[2]]
+
+# Model Fitting 
+ 
+train<- as.matrix(max_ps_trafxts[unlist(trainSlices),1])
+test <- as.matrix(max_ps_trafxts[unlist(testSlices),1])
+train_cluster <- as.matrix(cluster_means_xts[unlist(trainSlices),15]) # since '111001' BTs is in cluster 14
+#111007,13,18,21,29,30,33
+Xeg <- as.matrix(max_ps_trafxts_nor[unlist(trainSlices),c(7,13,18,21,29,30,33,47,53,77,81)])
+ 
+fit <- msarima(train, orders=list(ar=c(2,2,1),i=c(1,1,0),ma=c(1,1,2)), 
+         lags=c(1,24,168), h=72, silent=FALSE, initial="backcasting",
+         loss = "MSE",constant = TRUE)
+
+fit_c <- msarima(train_cluster, orders=list(ar=c(2,2,1),i=c(1,1,0),ma=c(1,1,2)), 
+               lags=c(1,24,168), h=72, silent=FALSE, initial="backcasting",
+               loss = "MSE",constant = TRUE)
+fit_xeg <- msarima(train, orders=list(ar=c(2,2,1),i=c(1,1,0),ma=c(1,1,2)), 
+                   lags=c(1,24,168), h=72, silent=FALSE, initial="backcasting",
+                   loss = "MSE",constant = TRUE,xeg= Xeg) 
+
+res1 = fit$residuals
+res2 = fit_c$residuals 
+res3 = fit_xeg$residuals
+ggtsdisplay(res3)
+summary(fit_xeg)
+summary(fit)
+df <- data.frame(x1=test[1:72,],x2=fit$forecast,x3 = fit_xeg$forecast,x4 = fit_c$forecast)
+f.time <- as.POSIXct("2019-04-17",tz ="GMT") + seq(0,259199,3600)
+df_xts<- xts(df, order.by = f.time)
+ggplotly(df_xts %>% 
+           ggplot() + 
+           geom_line(aes(Index,x1 ),color="steelblue")+
+           geom_line(aes(Index,x2 ),color="red")+
+           geom_line(aes(Index,x3 ),color="green")+
+           geom_line(aes(Index,x4 ),color="black")+
+           theme_bw() + 
+           labs( x = "Time", y = "forcasted Traffic_load` (GB)"))# standard plot
+
