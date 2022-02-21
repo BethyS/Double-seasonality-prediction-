@@ -190,5 +190,5 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
     resid = sarima_resid
   )
   
-  SARIMA
+  list(output)
 }
