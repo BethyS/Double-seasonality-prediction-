@@ -142,92 +142,92 @@ d.time <-
   as.POSIXct("2019-01-09", tz = "Africa/Addis_Ababa") + seq(0, 9676799, 3600)
 cluster_means_xts = xts(cluster_means[,-1], order.by = d.time)
 
-temp <-
-  rbind(
-    data.frame(
-      time = d.time[1:168],
-      value = cluster_means$Cluster0[1:168],
-      cluster = 0
-    ),
-    data.frame(
-      time = d.time[1:168],
-      value = cluster_means$Cluster1[1:168],
-      cluster = 1
-    ),
-    data.frame(
-      time = d.time[1:168],
-      value = cluster_means$Cluster2[1:168],
-      cluster = 2
-    ),
-    data.frame(
-      time = d.time[1:168],
-      value = cluster_means$Cluster3[1:168],
-      cluster = 3
-    ),
-    data.frame(
-      time = d.time[1:168],
-      value = cluster_means$Cluster4[1:168],
-      cluster = 4
-    )
-  )
-
-
-# Visualize it as time series
-
-p1 <-
-  ggplot() + geom_polygon(
-    data = shp,
-    aes(x = long, y = lat, group = group),
-    colour = "gray",
-    fill = NA
-  ) + theme_void()+geom_polygon(
-    data = shp2,
-    aes(x = long, y = lat, group = group),
-    colour = "black",
-    fill = NA
-  )+geom_polygon(
-    data = shp3,
-    aes(x = long, y = lat, group = group),
-    colour = "gray",
-    fill = NA
-  )+ geom_polygon(
-    data = shp4,
-    aes(x = long, y = lat, group = group),
-    colour = "gray",
-    fill = NA
-  )+ geom_polygon(
-    data = shp5,
-    aes(x = long, y = lat, group = group),
-    colour = "gray",
-    fill = NA
-  )+
-  geom_point(data = Selected_RNC, aes(
-    x = Longitude,
-    y = Latitude,
-    colour = factor(Cluster)
-  )) + theme_minimal()
-
-
-p2 <- temp %>% ggplot(aes(time, value, color = factor(cluster))) +
-  geom_line() + theme_bw() + labs(x = "Time", y = "Traffic_load` (TB)")# standard plot
-
-
-grid.arrange(
-  (
-    p1 + facet_wrap( ~ Cluster, nrow = 1) + ggtitle("DEC-FE Clustered Base Stations located in Addis Ababa")
-  ),
-
-  (
-    p2 + facet_wrap( ~ cluster , nrow = 1) + ggtitle("7 days of Clustered Mobile data traffic in Addis Ababa")
-  ),
-  ncol = 1,
-  nrow = 2
-)
-
-
-
-
-rm(temp,p1,p2)
+# temp <-
+#   rbind(
+#     data.frame(
+#       time = d.time[1:168],
+#       value = cluster_means$Cluster0[1:168],
+#       cluster = 0
+#     ),
+#     data.frame(
+#       time = d.time[1:168],
+#       value = cluster_means$Cluster1[1:168],
+#       cluster = 1
+#     ),
+#     data.frame(
+#       time = d.time[1:168],
+#       value = cluster_means$Cluster2[1:168],
+#       cluster = 2
+#     ),
+#     data.frame(
+#       time = d.time[1:168],
+#       value = cluster_means$Cluster3[1:168],
+#       cluster = 3
+#     ),
+#     data.frame(
+#       time = d.time[1:168],
+#       value = cluster_means$Cluster4[1:168],
+#       cluster = 4
+#     )
+#   )
+# 
+# 
+# # Visualize it as time series
+# 
+# p1 <-
+#   ggplot() + geom_polygon(
+#     data = shp,
+#     aes(x = long, y = lat, group = group),
+#     colour = "gray",
+#     fill = NA
+#   ) + theme_void()+geom_polygon(
+#     data = shp2,
+#     aes(x = long, y = lat, group = group),
+#     colour = "black",
+#     fill = NA
+#   )+geom_polygon(
+#     data = shp3,
+#     aes(x = long, y = lat, group = group),
+#     colour = "gray",
+#     fill = NA
+#   )+ geom_polygon(
+#     data = shp4,
+#     aes(x = long, y = lat, group = group),
+#     colour = "gray",
+#     fill = NA
+#   )+ geom_polygon(
+#     data = shp5,
+#     aes(x = long, y = lat, group = group),
+#     colour = "gray",
+#     fill = NA
+#   )+
+#   geom_point(data = Selected_RNC, aes(
+#     x = Longitude,
+#     y = Latitude,
+#     colour = factor(Cluster)
+#   )) + theme_minimal()
+# 
+# 
+# p2 <- temp %>% ggplot(aes(time, value, color = factor(cluster))) +
+#   geom_line() + theme_bw() + labs(x = "Time", y = "Traffic_load` (TB)")# standard plot
+# 
+# 
+# grid.arrange(
+#   (
+#     p1 + facet_wrap( ~ Cluster, nrow = 1) + ggtitle("DEC-FE Clustered Base Stations located in Addis Ababa")
+#   ),
+# 
+#   (
+#     p2 + facet_wrap( ~ cluster , nrow = 1) + ggtitle("7 days of Clustered Mobile data traffic in Addis Ababa")
+#   ),
+#   ncol = 1,
+#   nrow = 2
+# )
+# 
+# 
+# 
+# 
+# rm(temp,p1,p2)
 
 #################################################################################
 #   1.2 Data Processing                             #
@@ -301,7 +301,7 @@ for (cluster in 0:4) {
 
   BTS_data_cluster = Rawdata[as.character(bts_c)]
   forecast_sarima_bts <- SARIMA_Forecast(
-    model=Linear_model_clu[[(cluster+1)]]$model,
+    model=Linear_model_clu[[(cluster+1)]][[1]]$model,
     BTS_Names_Cluster = BTS_Names_Cluster,
     Rawdata = Rawdata,
     cluster = cluster,
