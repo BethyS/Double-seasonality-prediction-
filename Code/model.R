@@ -116,7 +116,7 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
   #   lubridate::dmy_hms("12/04/2019 08:00:00") + c(0:((test_range/2) - 1)) * lubridate::hours(1)
   # )))
   forecast_sarima <-
-    Best_ARIMA_model_case2 %>% smooth::reforecast(
+    Best_ARIMA_model_case2 %>% forecast(
       h = test_range,
       interval = "parametric",
       level = 0.95,
