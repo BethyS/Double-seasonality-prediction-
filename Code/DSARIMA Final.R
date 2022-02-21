@@ -287,7 +287,7 @@ loss <- function(true, pred)
 }
 Linear_model_clu <-
   foreach (cluster = 0:4,
-           .packages = c("ggplot2", "xts", "tidyverse")) %dopar% {
+           .packages = c("ggplot2", "xts", "tidyverse","forecast","smooth")) %dopar% {
              SARIMA_Model(univ_data=cluster_means_xts, 
                           test_range, 
                           c = cluster)
