@@ -4,7 +4,9 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
   # C is the univar. cluster to consider
   
   ## ------------------------------ time series data conv. ------------------------
+  cluster = paste0("Cluster",c)
   c <- c + 1
+  
   if (class(univ_data)[1] != "xts") {
     # the dataset is not give as data.frame
     time <- seq(
@@ -52,8 +54,9 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
   ##- Model building
   write.table(Correlation [["r"]],"Correlation.tsv",sep = '\t',col.names = F,row.names = F)
   
-  xreg_d = univ_data_xts[, which(as.data.frame(Correlation [["r"]][c, -c]) >=
+  xreg_d = univ_data_xts[, which(as.data.frame(Correlation [["r"]][c,]) >=
                                    0.8)]
+  xreg_d = xreg_d[ , !(names(xreg_d) %in% cluster)]
   # Remove intercept
   #Automatically select best model based on ADMA on smooth package
   
@@ -113,7 +116,7 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
   #   lubridate::dmy_hms("12/04/2019 08:00:00") + c(0:((test_range/2) - 1)) * lubridate::hours(1)
   # )))
   forecast_sarima <-
-    Best_ARIMA_model_case2 %>% forecast::forecast(
+    Best_ARIMA_model_case2 %>% smooth::reforecast(
       h = test_range,
       interval = "parametric",
       level = 0.95,
@@ -124,7 +127,8 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
     data.frame(
       Time = time[1:nrow(train)],
       SARIMA_fit = Best_ARIMA_model_case2$fitted,
-      actuals = forecast_sarima$model$y[, 1]
+      actuals = forecast_sarima$model$y[, 1],
+      residuals = Best_ARIMA_model_case2$residuals
     ),
     data.frame(
       Time = time[(nrow(train) + 1):nrow(univ_data_xts)],
@@ -140,12 +144,16 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
       "Time",
       "SARIMA_fit",
       "actuals",
+      "residuals",
       "forecast_mean",
       "lower_95",
       "upper_95",
       "Test_data"
     )
-  
+  openxlsx::write.xlsx(
+    SARIMA,
+    file = paste0("SARIMA_Forecast_for_", cluster, ".xlsx")
+  )
   #colnames(SARIMA)<- c("Time","SARIMA_fit","actuals","forecast_mean","Test_data")
   
   SARIMAxts <- xts::xts(SARIMA[, -1], order.by = time)
@@ -182,5 +190,5 @@ SARIMA_Model <- function(univ_data, test_range, c = 0)
     resid = sarima_resid
   )
   
-  output
+  SARIMA
 }
